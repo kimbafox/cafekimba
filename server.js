@@ -11,6 +11,9 @@ const port = Number(process.env.PORT ?? 3000);
 if (!process.env.DATABASE_URL) {
   throw new Error('DATABASE_URL es obligatoria.');
 }
+if (!process.env.ADMIN_PASSWORD) {
+  throw new Error('ADMIN_PASSWORD es obligatoria.');
+}
 
 const pool = new Pool({
   connectionString: process.env.DATABASE_URL,
@@ -21,6 +24,19 @@ const pool = new Pool({
 
 app.use(cors());
 app.use(express.json({ limit: '100kb' }));
+
+function requireAdmin(request, response, next) {
+  const header = request.get('authorization');
+  const basicPassword = header?.startsWith('Basic ')
+    ? Buffer.from(header.slice(6), 'base64').toString('utf8').split(':').slice(1).join(':')
+    : null;
+  const password = request.get('x-admin-password') ?? basicPassword;
+  if (password !== process.env.ADMIN_PASSWORD) {
+    response.set('WWW-Authenticate', 'Basic realm="Kimba Café"');
+    return response.status(401).json({ error: 'Acceso de administrador requerido.' });
+  }
+  next();
+}
 
 async function initializeDatabase() {
   const schema = await readFile(new URL('./schema.sql', import.meta.url), 'utf8');
@@ -83,7 +99,7 @@ app.get('/api/products', async (_request, response, next) => {
   }
 });
 
-app.post('/api/products', async (request, response, next) => {
+app.post('/api/products', requireAdmin, async (request, response, next) => {
   const { name, category, price } = request.body;
   if (!isValidProduct(name, category, price)) {
     return response.status(400).json({ error: 'Producto inválido.' });
@@ -99,7 +115,7 @@ app.post('/api/products', async (request, response, next) => {
   }
 });
 
-app.put('/api/products/:id', async (request, response, next) => {
+app.put('/api/products/:id', requireAdmin, async (request, response, next) => {
   const { name, category, price } = request.body;
   if (!isValidProduct(name, category, price)) {
     return response.status(400).json({ error: 'Producto inválido.' });
@@ -117,7 +133,7 @@ app.put('/api/products/:id', async (request, response, next) => {
   }
 });
 
-app.delete('/api/products/:id', async (request, response, next) => {
+app.delete('/api/products/:id', requireAdmin, async (request, response, next) => {
   try {
     const result = await pool.query('DELETE FROM products WHERE id = $1', [request.params.id]);
     if (result.rowCount === 0) return response.status(404).json({ error: 'Producto no encontrado.' });
@@ -181,6 +197,73 @@ app.post('/api/sales', async (request, response, next) => {
     client.release();
   }
 });
+
+app.get('/api/admin/overview', requireAdmin, async (request, response, next) => {
+  const date = request.query.date;
+  if (typeof date !== 'string' || !/^\d{4}-\d{2}-\d{2}$/.test(date)) {
+    return response.status(400).json({ error: 'La fecha debe tener el formato YYYY-MM-DD.' });
+  }
+  try {
+    const result = await pool.query(
+      `WITH ranges AS (
+        SELECT
+          $1::date AS today,
+          date_trunc('week', $1::date)::date AS week_start,
+          date_trunc('month', $1::date)::date AS month_start
+      ),
+      totals AS (
+        SELECT
+          COALESCE(SUM(s.total) FILTER (WHERE s.created_at::date = ranges.today), 0) AS today_total,
+          COALESCE(COUNT(*) FILTER (WHERE s.created_at::date = ranges.today), 0) AS today_orders,
+          COALESCE(SUM(s.total) FILTER (
+            WHERE s.created_at::date >= ranges.week_start
+              AND s.created_at::date <= ranges.today
+              AND EXTRACT(ISODOW FROM s.created_at) BETWEEN 1 AND 6
+          ), 0) AS week_total,
+          COALESCE(SUM(s.total) FILTER (
+            WHERE s.created_at::date >= ranges.month_start
+              AND s.created_at::date <= ranges.today
+              AND EXTRACT(ISODOW FROM s.created_at) BETWEEN 1 AND 6
+          ), 0) AS month_total
+        FROM sales s CROSS JOIN ranges
+      )
+      SELECT
+        today_total,
+        today_orders,
+        week_total,
+        month_total,
+        CASE WHEN EXTRACT(ISODOW FROM today) BETWEEN 1 AND 6 THEN 300 ELSE 0 END AS today_goal,
+        300 * (
+          SELECT COUNT(*)
+          FROM generate_series(week_start, today, INTERVAL '1 day') AS days(workday)
+          WHERE EXTRACT(ISODOW FROM workday) BETWEEN 1 AND 6
+        ) AS week_goal,
+        300 * (
+          SELECT COUNT(*)
+          FROM generate_series(month_start, today, INTERVAL '1 day') AS days(workday)
+          WHERE EXTRACT(ISODOW FROM workday) BETWEEN 1 AND 6
+        ) AS month_goal
+      FROM totals CROSS JOIN ranges`,
+      [date],
+    );
+    const values = result.rows[0];
+    response.json({
+      today: { total: Number(values.today_total), orders: Number(values.today_orders), goal: Number(values.today_goal) },
+      week: { total: Number(values.week_total), goal: Number(values.week_goal) },
+      month: { total: Number(values.month_total), goal: Number(values.month_goal) },
+      latestSales: await salesWithItems('', [], 100),
+    });
+  } catch (error) {
+    next(error);
+  }
+});
+
+app.use(
+  '/admin',
+  requireAdmin,
+  express.static(new URL('./web/', import.meta.url).pathname),
+);
+app.get('/', (_request, response) => response.redirect('/admin/'));
 
 function isValidProduct(name, category, price) {
   return typeof name === 'string'
