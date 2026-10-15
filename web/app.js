@@ -30,7 +30,13 @@ function renderChart(dailySales) {
   }).join('');
 }
 function renderMenu() {
-  const categories = ['Bebidas calientes', 'Bebidas frías', 'Sándwiches'];
+  const categories = [
+    'Bebidas calientes',
+    'Bebidas frías',
+    'Sándwiches',
+    'Masitas',
+    'Servicios extra',
+  ];
   $('#products').innerHTML = categories.map((category) => {
     const items = products.filter((product) => product.category === category);
     return `<section class="category-section"><div class="category-title">${category}<span>${items.length} productos</span></div><div class="product-grid">${items.map((product) => `<article class="product"><div class="info"><b>${product.name}</b><small>${money(product.price)}</small></div><div class="product-actions"><button class="icon" data-edit="${product.id}" title="Editar producto">✎</button><button class="icon danger" data-delete="${product.id}" title="Eliminar producto">⌫</button></div></article>`).join('') || '<div class="product">Sin productos en esta categoría.</div>'}</div></section>`;

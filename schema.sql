@@ -4,11 +4,28 @@ CREATE TABLE IF NOT EXISTS products (
   id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
   name TEXT NOT NULL CHECK (length(trim(name)) > 0),
   category TEXT NOT NULL CHECK (
-    category IN ('Bebidas calientes', 'Bebidas frías', 'Sándwiches')
+    category IN (
+      'Bebidas calientes',
+      'Bebidas frías',
+      'Sándwiches',
+      'Masitas',
+      'Servicios extra'
+    )
   ),
   price NUMERIC(10, 2) NOT NULL CHECK (price > 0),
   created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
   UNIQUE (name, category)
+);
+
+ALTER TABLE products DROP CONSTRAINT IF EXISTS products_category_check;
+ALTER TABLE products ADD CONSTRAINT products_category_check CHECK (
+  category IN (
+    'Bebidas calientes',
+    'Bebidas frías',
+    'Sándwiches',
+    'Masitas',
+    'Servicios extra'
+  )
 );
 
 CREATE TABLE IF NOT EXISTS sales (

@@ -320,7 +320,13 @@ app.get('/', (_request, response) => response.redirect('/admin/'));
 function isValidProduct(name, category, price) {
   return typeof name === 'string'
     && name.trim().length > 0
-    && ['Bebidas calientes', 'Bebidas frías', 'Sándwiches'].includes(category)
+    && [
+      'Bebidas calientes',
+      'Bebidas frías',
+      'Sándwiches',
+      'Masitas',
+      'Servicios extra',
+    ].includes(category)
     && typeof price === 'number'
     && Number.isFinite(price)
     && price > 0;
