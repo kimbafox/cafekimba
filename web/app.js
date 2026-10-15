@@ -33,9 +33,10 @@ function renderMenu() {
   const categories = ['Bebidas calientes', 'Bebidas frías', 'Sándwiches'];
   $('#products').innerHTML = categories.map((category) => {
     const items = products.filter((product) => product.category === category);
-    return `<section class="category-section"><div class="category-title">${category}<span>${items.length} productos</span></div><div class="product-grid">${items.map((product) => `<article class="product"><div class="info"><b>${product.name}</b><small>${money(product.price)}</small></div><button class="icon" data-edit="${product.id}" title="Editar producto">✎</button></article>`).join('') || '<div class="product">Sin productos en esta categoría.</div>'}</div></section>`;
+    return `<section class="category-section"><div class="category-title">${category}<span>${items.length} productos</span></div><div class="product-grid">${items.map((product) => `<article class="product"><div class="info"><b>${product.name}</b><small>${money(product.price)}</small></div><div class="product-actions"><button class="icon" data-edit="${product.id}" title="Editar producto">✎</button><button class="icon danger" data-delete="${product.id}" title="Eliminar producto">⌫</button></div></article>`).join('') || '<div class="product">Sin productos en esta categoría.</div>'}</div></section>`;
   }).join('');
   document.querySelectorAll('[data-edit]').forEach((button) => button.onclick = () => openEditor(products.find((product) => product.id === button.dataset.edit)));
+  document.querySelectorAll('[data-delete]').forEach((button) => button.onclick = () => deleteProduct(products.find((product) => product.id === button.dataset.delete)));
 }
 function render(data) {
   $('#metrics').innerHTML = metric('HOY · MÍNIMO BS 300', data.today) + metric('SEMANA · LUNES A SÁBADO', data.week) + metric('MES · LUNES A SÁBADO', data.month);
@@ -57,6 +58,15 @@ function openEditor(product) {
   $('#product-form').reset(); $('#form-error').textContent = ''; $('#product-id').value = product?.id ?? '';
   $('#form-title').textContent = product ? 'Editar producto' : 'Agregar producto';
   $('#name').value = product?.name ?? ''; $('#price').value = product?.price ?? ''; $('#category').value = product?.category ?? 'Bebidas calientes'; $('#editor').showModal();
+}
+async function deleteProduct(product) {
+  if (!window.confirm(`¿Eliminar "${product.name}" del menú? Esta acción no se puede deshacer.`)) return;
+  try {
+    await request(`/api/products/${product.id}`, { method: 'DELETE' });
+    await refresh();
+  } catch (error) {
+    window.alert(error.message);
+  }
 }
 $('#add-product').onclick = () => openEditor();
 $('#refresh').onclick = refresh;
