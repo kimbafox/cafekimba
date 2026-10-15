@@ -31,17 +31,24 @@ CREATE INDEX IF NOT EXISTS sales_created_at_index ON sales(created_at DESC);
 CREATE INDEX IF NOT EXISTS sale_items_sale_id_index ON sale_items(sale_id);
 
 INSERT INTO products (name, category, price)
-VALUES
-  ('Café negro', 'Bebidas calientes', 3),
-  ('Café con leche', 'Bebidas calientes', 4),
-  ('Capuchino', 'Bebidas calientes', 4),
-  ('Capuchino con esencia', 'Bebidas calientes', 4),
-  ('Latte', 'Bebidas calientes', 5),
-  ('Café frío', 'Bebidas frías', 5),
-  ('Café helado saborizado', 'Bebidas frías', 6),
-  ('Jugo natural', 'Bebidas frías', 5),
-  ('Jugo combinado', 'Bebidas frías', 7),
-  ('Refresco natural', 'Bebidas frías', 3.5),
-  ('Jamón y queso', 'Sándwiches', 6),
-  ('Jamón', 'Sándwiches', 5)
-ON CONFLICT (name, category) DO NOTHING;
+SELECT menu.name, menu.category, menu.price
+FROM (
+  VALUES
+    ('Café negro', 'Bebidas calientes', 3::NUMERIC),
+    ('Café con leche', 'Bebidas calientes', 4::NUMERIC),
+    ('Capuchino', 'Bebidas calientes', 4::NUMERIC),
+    ('Capuchino con esencia', 'Bebidas calientes', 4::NUMERIC),
+    ('Latte', 'Bebidas calientes', 5::NUMERIC),
+    ('Café frío', 'Bebidas frías', 5::NUMERIC),
+    ('Café helado saborizado', 'Bebidas frías', 6::NUMERIC),
+    ('Jugo natural', 'Bebidas frías', 5::NUMERIC),
+    ('Jugo combinado', 'Bebidas frías', 7::NUMERIC),
+    ('Refresco natural', 'Bebidas frías', 3.5::NUMERIC),
+    ('Jamón y queso', 'Sándwiches', 6::NUMERIC),
+    ('Jamón', 'Sándwiches', 5::NUMERIC)
+) AS menu(name, category, price)
+WHERE NOT EXISTS (
+  SELECT 1
+  FROM products
+  WHERE products.name = menu.name AND products.category = menu.category
+);
