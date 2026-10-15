@@ -22,7 +22,7 @@ Sin `API_BASE_URL`, la aplicación funciona solamente con almacenamiento local.
 
 ## Panel web
 
-Abre `https://tu-api.up.railway.app/admin/`. El navegador pedirá la contraseña configurada en `ADMIN_PASSWORD`; el usuario puede ser cualquier texto. El panel muestra ventas, pedidos, metas de Bs 300 y permite modificar el menú.
+Abre `https://tu-api.up.railway.app/login`. La página solicitará la contraseña configurada en `ADMIN_PASSWORD`; después te llevará al panel protegido. El panel muestra ventas, pedidos, metas de Bs 300 y permite modificar el menú.
 
 La meta semanal y mensual suma Bs 300 por cada día hábil transcurrido (lunes a sábado); los domingos no se incluyen.
 

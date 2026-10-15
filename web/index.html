@@ -8,25 +8,32 @@
 </head>
 <body>
   <header class="topbar">
-    <div><span class="mark">K</span><span><b>KIMBA CAFÉ</b><small>Panel de administración</small></span></div>
-    <div id="connection" class="live">● En vivo</div>
+    <a href="/admin/" class="brand"><img src="logo.png" alt="Logo Kimba Café"><span><b>KIMBA CAFÉ</b><small>Administración y ventas</small></span></a>
+    <div class="top-actions"><span id="connection" class="live">● En vivo</span><button class="logout" id="logout">Cerrar sesión</button></div>
   </header>
   <main>
     <section class="hero">
-      <div><p class="eyebrow">RESUMEN OPERATIVO</p><h1>Ventas y pedidos</h1><p id="updated">Actualizando datos...</p></div>
+      <div><p class="eyebrow">PANEL OPERATIVO</p><h1>Ventas, pedidos y metas</h1><p id="updated">Actualizando información...</p></div>
       <button class="button primary" id="refresh">↻ Actualizar ahora</button>
     </section>
     <section class="cards" id="metrics"></section>
-    <section class="panel">
-      <div class="section-title"><div><p class="eyebrow">PEDIDOS</p><h2>Registro reciente</h2></div><span class="badge" id="order-count"></span></div>
-      <div class="table-wrap"><table><thead><tr><th>Hora</th><th>Productos</th><th>Estado</th><th>Total</th></tr></thead><tbody id="orders"></tbody></table></div>
+    <section class="panel orders-panel">
+      <div class="section-title"><div><p class="eyebrow">PEDIDOS PROCESADOS</p><h2>Registro reciente</h2></div><span class="badge" id="order-count"></span></div>
+      <div class="orders-scroll"><table><thead><tr><th>Hora</th><th>Productos del pedido</th><th>Estado</th><th>Total</th></tr></thead><tbody id="orders"></tbody></table></div>
+    </section>
+    <section class="panel chart-panel">
+      <div class="section-title"><div><p class="eyebrow">RENDIMIENTO MENSUAL</p><h2>Ventas por día</h2></div><span class="badge">Meta diaria: Bs 300</span></div>
+      <div class="chart-key"><span><i class="sales-key"></i> Ventas</span><span><i class="goal-key"></i> Meta</span></div>
+      <div class="chart-wrap" id="month-chart" aria-label="Gráfico de ventas mensuales"></div>
     </section>
     <section class="panel">
-      <div class="section-title"><div><p class="eyebrow">MENÚ</p><h2>Administrar productos</h2></div><button class="button primary" id="add-product">+ Agregar producto</button></div>
-      <div class="product-grid" id="products"></div>
+      <div class="section-title menu-header"><div><p class="eyebrow">MENÚ DE CAFETERÍA</p><h2>Productos y precios</h2><p>Los cambios se sincronizan inmediatamente con los dispositivos.</p></div><button class="button primary" id="add-product">+ Agregar producto</button></div>
+      <div id="products"></div>
     </section>
   </main>
-  <dialog id="editor"><form method="dialog" id="product-form"><div class="dialog-head"><h2 id="form-title">Agregar producto</h2><button class="icon" value="cancel">×</button></div><input id="product-id" type="hidden"><label>Nombre<input id="name" required maxlength="100" placeholder="Ej. Mocaccino"></label><label>Precio en Bs<input id="price" required type="number" min="0.01" step="0.01" placeholder="0.00"></label><label>Categoría<select id="category"><option>Bebidas calientes</option><option>Bebidas frías</option><option>Sándwiches</option></select></label><p class="form-error" id="form-error"></p><div class="dialog-actions"><button class="button" value="cancel">Cancelar</button><button class="button primary" id="save" value="default">Guardar cambios</button></div></form></dialog>
+  <button class="help-button" id="help" aria-label="Abrir instructivo">?</button>
+  <dialog id="guide"><div class="dialog-head"><div><p class="eyebrow">INSTRUCTIVO RÁPIDO</p><h2>Cómo usar el panel</h2></div><button class="icon" id="close-guide" aria-label="Cerrar">×</button></div><ol><li><b>Consulta pedidos:</b> usa la barra de desplazamiento del registro para revisar compras anteriores.</li><li><b>Revisa las metas:</b> cada día hábil tiene una meta mínima de Bs 300; domingo no suma a las metas.</li><li><b>Administra el menú:</b> agrega o edita productos por categoría. Los cambios aparecen en los cajeros conectados.</li><li><b>Actualización:</b> la información se refresca cada 10 segundos o al usar “Actualizar ahora”.</li></ol></dialog>
+  <dialog id="editor"><form method="dialog" id="product-form"><div class="dialog-head"><div><p class="eyebrow">MENÚ</p><h2 id="form-title">Agregar producto</h2></div><button class="icon" value="cancel" aria-label="Cerrar">×</button></div><input id="product-id" type="hidden"><div class="form-grid"><label>Nombre del producto<input id="name" required maxlength="100" placeholder="Ej. Mocaccino"></label><label>Precio en Bs<input id="price" required type="number" min="0.01" step="0.01" placeholder="0.00"></label><label class="full">Categoría<select id="category"><option>Bebidas calientes</option><option>Bebidas frías</option><option>Sándwiches</option></select></label></div><p class="form-error" id="form-error"></p><div class="dialog-actions"><button class="button" value="cancel">Cancelar</button><button class="button primary" id="save" value="default">Guardar cambios</button></div></form></dialog>
   <script src="app.js"></script>
 </body>
 </html>

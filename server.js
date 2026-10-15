@@ -1,4 +1,5 @@
 import 'dotenv/config';
+import crypto from 'node:crypto';
 import { readFile } from 'node:fs/promises';
 import cors from 'cors';
 import express from 'express';
@@ -7,6 +8,8 @@ import pg from 'pg';
 const { Pool } = pg;
 const app = express();
 const port = Number(process.env.PORT ?? 3000);
+const webDirectory = new URL('./web/', import.meta.url).pathname;
+const sessions = new Map();
 
 if (!process.env.DATABASE_URL) {
   throw new Error('DATABASE_URL es obligatoria.');
@@ -26,16 +29,30 @@ app.use(cors());
 app.use(express.json({ limit: '100kb' }));
 
 function requireAdmin(request, response, next) {
-  const header = request.get('authorization');
-  const basicPassword = header?.startsWith('Basic ')
-    ? Buffer.from(header.slice(6), 'base64').toString('utf8').split(':').slice(1).join(':')
-    : null;
-  const password = request.get('x-admin-password') ?? basicPassword;
-  if (password !== process.env.ADMIN_PASSWORD) {
-    response.set('WWW-Authenticate', 'Basic realm="Kimba Café"');
+  const password = request.get('x-admin-password');
+  if (password !== process.env.ADMIN_PASSWORD && !hasWebSession(request)) {
     return response.status(401).json({ error: 'Acceso de administrador requerido.' });
   }
   next();
+}
+
+function hasWebSession(request) {
+  const token = request.get('cookie')
+    ?.split(';')
+    .map((value) => value.trim())
+    .find((value) => value.startsWith('kimba_session='))
+    ?.split('=')[1];
+  const expiry = token ? sessions.get(token) : null;
+  if (!expiry || expiry < Date.now()) {
+    if (token) sessions.delete(token);
+    return false;
+  }
+  return true;
+}
+
+function requireWebAdmin(request, response, next) {
+  if (hasWebSession(request)) return next();
+  return response.redirect('/login');
 }
 
 async function initializeDatabase() {
@@ -247,22 +264,57 @@ app.get('/api/admin/overview', requireAdmin, async (request, response, next) => 
       [date],
     );
     const values = result.rows[0];
+    const dailyResult = await pool.query(
+      `SELECT created_at::date AS date, COALESCE(SUM(total), 0) AS total
+       FROM sales
+       WHERE created_at::date >= date_trunc('month', $1::date)::date
+         AND created_at::date <= $1::date
+       GROUP BY created_at::date
+       ORDER BY date`,
+      [date],
+    );
     response.json({
       today: { total: Number(values.today_total), orders: Number(values.today_orders), goal: Number(values.today_goal) },
       week: { total: Number(values.week_total), goal: Number(values.week_goal) },
       month: { total: Number(values.month_total), goal: Number(values.month_goal) },
       latestSales: await salesWithItems('', [], 100),
+      dailySales: dailyResult.rows.map((row) => ({
+        date: String(row.date).slice(0, 10),
+        total: Number(row.total),
+      })),
     });
   } catch (error) {
     next(error);
   }
 });
 
-app.use(
-  '/admin',
-  requireAdmin,
-  express.static(new URL('./web/', import.meta.url).pathname),
-);
+app.post('/api/login', (request, response) => {
+  if (request.body.password !== process.env.ADMIN_PASSWORD) {
+    return response.status(401).json({ error: 'Contraseña incorrecta.' });
+  }
+  const token = crypto.randomBytes(32).toString('hex');
+  sessions.set(token, Date.now() + 1000 * 60 * 60 * 8);
+  response.set(
+    'Set-Cookie',
+    `kimba_session=${token}; HttpOnly; Secure; SameSite=Strict; Path=/; Max-Age=28800`,
+  );
+  return response.status(204).end();
+});
+
+app.post('/api/logout', requireAdmin, (request, response) => {
+  const token = request.get('cookie')
+    ?.split(';')
+    .map((value) => value.trim())
+    .find((value) => value.startsWith('kimba_session='))
+    ?.split('=')[1];
+  if (token) sessions.delete(token);
+  response.set('Set-Cookie', 'kimba_session=; HttpOnly; Secure; SameSite=Strict; Path=/; Max-Age=0');
+  response.status(204).end();
+});
+
+app.use('/web', express.static(webDirectory));
+app.get('/login', (_request, response) => response.sendFile(`${webDirectory}login.html`));
+app.use('/admin', requireWebAdmin, express.static(webDirectory));
 app.get('/', (_request, response) => response.redirect('/admin/'));
 
 function isValidProduct(name, category, price) {

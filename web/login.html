@@ -1,0 +1,30 @@
+<!doctype html>
+<html lang="es">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Acceso | Kimba Café</title>
+  <link rel="stylesheet" href="/web/styles.css">
+</head>
+<body class="login-page">
+  <main class="login-card">
+    <img src="/web/logo.png" alt="Logo Kimba Café" class="login-logo">
+    <p class="eyebrow">ADMINISTRACIÓN</p>
+    <h1>Panel Kimba Café</h1>
+    <p class="login-copy">Ingresa la contraseña de administrador para consultar ventas, pedidos y administrar el menú.</p>
+    <form id="login-form">
+      <label>Contraseña de administrador<input id="password" type="password" autocomplete="current-password" required autofocus></label>
+      <p class="form-error" id="error"></p>
+      <button class="button primary" type="submit">Ingresar al panel</button>
+    </form>
+  </main>
+  <script>
+    document.querySelector('#login-form').addEventListener('submit', async (event) => {
+      event.preventDefault();
+      const response = await fetch('/api/login', { method: 'POST', headers: {'Content-Type': 'application/json'}, body: JSON.stringify({password: document.querySelector('#password').value}) });
+      if (response.ok) return window.location.assign('/admin/');
+      document.querySelector('#error').textContent = (await response.json()).error;
+    });
+  </script>
+</body>
+</html>
