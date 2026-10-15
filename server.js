@@ -1,4 +1,5 @@
 import 'dotenv/config';
+import { readFile } from 'node:fs/promises';
 import cors from 'cors';
 import express from 'express';
 import pg from 'pg';
@@ -21,60 +22,9 @@ const pool = new Pool({
 app.use(cors());
 app.use(express.json({ limit: '100kb' }));
 
-const initialProducts = [
-  ['Café negro', 'Bebidas calientes', 3],
-  ['Café con leche', 'Bebidas calientes', 4],
-  ['Capuchino', 'Bebidas calientes', 4],
-  ['Capuchino con esencia', 'Bebidas calientes', 4],
-  ['Latte', 'Bebidas calientes', 5],
-  ['Café frío', 'Bebidas frías', 5],
-  ['Café helado saborizado', 'Bebidas frías', 6],
-  ['Jugo natural', 'Bebidas frías', 5],
-  ['Jugo combinado', 'Bebidas frías', 7],
-  ['Refresco natural', 'Bebidas frías', 3.5],
-  ['Jamón y queso', 'Sándwiches', 6],
-  ['Jamón', 'Sándwiches', 5],
-];
-
 async function initializeDatabase() {
-  await pool.query(`
-    CREATE TABLE IF NOT EXISTS products (
-      id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-      name TEXT NOT NULL CHECK (length(trim(name)) > 0),
-      category TEXT NOT NULL CHECK (category IN ('Bebidas calientes', 'Bebidas frías', 'Sándwiches')),
-      price NUMERIC(10, 2) NOT NULL CHECK (price > 0),
-      created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
-    );
-    CREATE TABLE IF NOT EXISTS sales (
-      id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-      created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
-      total NUMERIC(10, 2) NOT NULL CHECK (total >= 0)
-    );
-    CREATE TABLE IF NOT EXISTS sale_items (
-      id BIGSERIAL PRIMARY KEY,
-      sale_id UUID NOT NULL REFERENCES sales(id) ON DELETE CASCADE,
-      product_id UUID REFERENCES products(id) ON DELETE SET NULL,
-      product_name TEXT NOT NULL,
-      product_category TEXT NOT NULL,
-      unit_price NUMERIC(10, 2) NOT NULL CHECK (unit_price > 0),
-      quantity INTEGER NOT NULL CHECK (quantity > 0)
-    );
-    CREATE INDEX IF NOT EXISTS sales_created_at_index ON sales(created_at DESC);
-    CREATE INDEX IF NOT EXISTS sale_items_sale_id_index ON sale_items(sale_id);
-  `);
-  const result = await pool.query('SELECT COUNT(*)::int AS count FROM products');
-  if (result.rows[0].count === 0) {
-    await pool.query(
-      `INSERT INTO products (name, category, price)
-       SELECT item.name, item.category, item.price
-       FROM UNNEST($1::text[], $2::text[], $3::numeric[]) AS item(name, category, price)`,
-      [
-        initialProducts.map(([name]) => name),
-        initialProducts.map(([, category]) => category),
-        initialProducts.map(([, , price]) => price),
-      ],
-    );
-  }
+  const schema = await readFile(new URL('./schema.sql', import.meta.url), 'utf8');
+  await pool.query(schema);
 }
 
 function product(row) {
